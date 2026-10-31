@@ -97,7 +97,6 @@ export default function Register() {
             <ArrowRight className="h-4 w-4" />
           </Button>
         </form>
-        import {Link} from "react-router-dom";
         <p className="text-sm text-ink-400 mt-6 text-center">
           Already have an account?{" "}
           <Link
