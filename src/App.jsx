@@ -1,116 +1,92 @@
-import {
-  BrowserRouter as Router,
-  Routes,
-  Route,
-  Navigate,
-} from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
-import { AuthProvider, useAuth } from "./context/AuthContext";
-import { ProtectedRoute } from "./components/ProtectedRoute";
+import { useAuth } from "./context/AuthContext";
+import ProtectedRoute from "./components/layout/ProtectedRoute";
+import DashboardShell from "./components/layout/DashboardShell";
 
-// Layouts
-import AdminLayout from "./layouts/AdminLayout";
-import SuperAdminLayout from "./layouts/SuperAdminLayout";
-import UserLayout from "./layouts/UserLayout";
+import Login from "./pages/auth/Login";
+import Register from "./pages/auth/Register";
+import UserDashboard from "./pages/user/UserDashboard";
+import AdminOverview from "./pages/admin/AdminOverview";
+import AdminServices from "./pages/admin/AdminServices";
+import AdminUsers from "./pages/admin/AdminUsers";
+import SuperAdminAdmins from "./pages/superadmin/SuperAdminAdmins";
 
-// Pages
-import Login from "./pages/Login";
-
-// Admin & Super Admin Shared Pages
-import Users from "./pages/admin/Users";
-import Services from "./pages/admin/Services";
-import Search from "./pages/admin/Search";
-
-// Admin Dashboard
-import AdminDashboard from "./pages/admin/Dashboard";
-
-// Super Admin Dashboard
-import SuperDashboard from "./pages/super-admin/SuperDashboard";
-import CreateAdmin from "./pages/super-admin/CreateAdmin";
-import SystemStats from "./pages/super-admin/SystemStats";
-
-// User Pages
-import UserDashboard from "./pages/user/Dashboard";
-import UserServices from "./pages/user/Services";
-
-const AppRoutes = () => {
+function HomeRedirect() {
   const { user } = useAuth();
-
-  return (
-    <Routes>
-      {/* Public Routes */}
-      <Route path="/login" element={<Login />} />
-
-      {/* ============================================ */}
-      {/* SUPER ADMIN ROUTES - /super-admin/* */}
-      {/* ============================================ */}
-      <Route
-        path="/super-admin"
-        element={
-          <ProtectedRoute roles={["super-admin"]}>
-            <SuperAdminLayout />
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={<Navigate to="dashboard" replace />} />
-        <Route path="dashboard" element={<SuperDashboard />} />
-        <Route path="users" element={<Users />} />
-        <Route path="services" element={<Services />} />
-        <Route path="search" element={<Search />} />
-        <Route path="create-admin" element={<CreateAdmin />} />
-        <Route path="system-stats" element={<SystemStats />} />
-      </Route>
-
-      {/* ============================================ */}
-      {/* ADMIN ROUTES - /admin/* */}
-      {/* ============================================ */}
-      <Route
-        path="/admin"
-        element={
-          <ProtectedRoute roles={["admin"]}>
-            <AdminLayout />
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={<Navigate to="dashboard" replace />} />
-        <Route path="dashboard" element={<AdminDashboard />} />
-        <Route path="users" element={<Users />} />
-        <Route path="services" element={<Services />} />
-        <Route path="search" element={<Search />} />
-      </Route>
-
-      {/* ============================================ */}
-      {/* USER ROUTES - /user/* */}
-      {/* ============================================ */}
-      <Route
-        path="/user"
-        element={
-          <ProtectedRoute roles={["user"]}>
-            <UserLayout />
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={<Navigate to="dashboard" replace />} />
-        <Route path="dashboard" element={<UserDashboard />} />
-        <Route path="services" element={<UserServices />} />
-      </Route>
-
-      {/* Default Redirect */}
-      <Route path="/" element={<Navigate to="/login" replace />} />
-      <Route path="*" element={<Navigate to="/login" replace />} />
-    </Routes>
-  );
-};
-
-function App() {
-  return (
-    <Router>
-      <AuthProvider>
-        <Toaster position="top-right" toastOptions={{ duration: 3000 }} />
-        <AppRoutes />
-      </AuthProvider>
-    </Router>
-  );
+  if (!user) return <Navigate to="/login" replace />;
+  return <Navigate to="/app" replace />;
 }
 
-export default App;
+function DashboardIndex() {
+  const { user } = useAuth();
+  if (user?.role === "user") return <UserDashboard />;
+  return <AdminOverview />;
+}
+
+export default function App() {
+  return (
+    <>
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          style: {
+            fontSize: "14px",
+            borderRadius: "10px",
+          },
+        }}
+      />
+      <Routes>
+        <Route path="/" element={<HomeRedirect />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+
+        <Route
+          path="/app"
+          element={
+            <ProtectedRoute>
+              <DashboardShell>
+                <DashboardIndex />
+              </DashboardShell>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/app/services"
+          element={
+            <ProtectedRoute roles={["admin", "super-admin"]}>
+              <DashboardShell>
+                <AdminServices />
+              </DashboardShell>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/app/users"
+          element={
+            <ProtectedRoute roles={["admin", "super-admin"]}>
+              <DashboardShell>
+                <AdminUsers />
+              </DashboardShell>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/app/admins"
+          element={
+            <ProtectedRoute roles={["super-admin"]}>
+              <DashboardShell>
+                <SuperAdminAdmins />
+              </DashboardShell>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </>
+  );
+}

@@ -1,75 +1,49 @@
-import { createContext, useContext, useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { loginUser, registerUser } from "../api/auth";
-import toast from "react-hot-toast";
+import { createContext, useContext, useState, useCallback } from "react";
+import { login as loginRequest } from "../api/endpoints";
 
-const AuthContext = createContext();
+const AuthContext = createContext(null);
 
-export const useAuth = () => useContext(AuthContext);
+export function AuthProvider({ children }) {
+  const [user, setUser] = useState(() => {
+    const raw = localStorage.getItem("sp_user");
+    return raw ? JSON.parse(raw) : null;
+  });
+  const [loading, setLoading] = useState(false);
 
-export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    // Check if user is logged in on mount
-    const storedUser = localStorage.getItem("user");
-    const token = localStorage.getItem("token");
-
-    if (storedUser && token) {
-      setUser(JSON.parse(storedUser));
+  const login = useCallback(async (email, password) => {
+    setLoading(true);
+    try {
+      const { data } = await loginRequest(email, password);
+      const userData = {
+        name: data.name,
+        email: data.email,
+        role: data.role,
+        publicId: data.publicId,
+      };
+      localStorage.setItem("sp_token", data.token);
+      localStorage.setItem("sp_user", JSON.stringify(userData));
+      setUser(userData);
+      return userData;
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, []);
 
- const login = async (email, password) => {
-  try {
-    const data = await loginUser(email, password);
-
-    localStorage.setItem("token", data.token);
-    localStorage.setItem("user", JSON.stringify(data));
-    setUser(data);
-
-    toast.success(`Welcome back, ${data.name}!`);
-
-    // ✅ Redirect based on role
-    if (data.role === "super-admin") {
-      navigate("/super-admin/dashboard");  // ← Different URL
-    } else if (data.role === "admin") {
-      navigate("/admin/dashboard");
-    } else {
-      navigate("/user/dashboard");
-    }
-
-    return data;
-  } catch (error) {
-    throw error;
-  }
-};
-
-  const logout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
+  const logout = useCallback(() => {
+    localStorage.removeItem("sp_token");
+    localStorage.removeItem("sp_user");
     setUser(null);
-    navigate("/login");
-    toast.success("Logged out successfully");
-  };
-
-  const value = {
-    user,
-    loading,
-    login,
-    logout,
-    isAuthenticated: !!user,
-    isAdmin: user?.role === "admin" || user?.role === "super-admin",
-    isSuperAdmin: user?.role === "super-admin",
-    isUser: user?.role === "user",
-  };
+  }, []);
 
   return (
-    <AuthContext.Provider value={value}>
-      {!loading && children}
+    <AuthContext.Provider value={{ user, login, logout, loading }}>
+      {children}
     </AuthContext.Provider>
   );
-};
+}
+
+export function useAuth() {
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
+  return ctx;
+}
